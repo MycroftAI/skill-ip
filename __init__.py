@@ -1,50 +1,39 @@
-# Copyright 2016 Mycroft AI, Inc.
+# Copyright 2017 Mycroft AI Inc.
 #
-# This file is part of Mycroft Core.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Mycroft Core is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# Mycroft Core is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
-# You should have received a copy of the GNU General Public License
-# along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
-
-
-from os.path import dirname, join
-import re
 import time
-
+from os.path import dirname, join
 from netifaces import interfaces, ifaddresses, AF_INET
 
 from adapt.intent import IntentBuilder
-from mycroft.skills.core import MycroftSkill
-from mycroft.util.log import getLogger
-
-logger = getLogger(__name__)
-
-__author__ = 'ryanleesipes'
+from mycroft.skills.core import MycroftSkill, intent_handler
+import mycroft.audio
+from mycroft.util.log import LOG
 
 
 class IPSkill(MycroftSkill):
-    SEC_PER_LETTER = 4.0 / 7.0
+    SEC_PER_LETTER = 0.65  # timing based on Mark 1 screen
     LETTERS_PER_SCREEN = 9.0
 
     def __init__(self):
         super(IPSkill, self).__init__(name="IPSkill")
 
-    def initialize(self):
-        intent = IntentBuilder("IPIntent").require("IPCommand").build()
-        self.register_intent(intent, self.handle_intent)
+    @intent_handler(IntentBuilder("IPIntent").require("query").require("IP"))
+    def handle_query_IP(self, message):
 
-    def handle_intent(self, message):
-        self.speak("Here are my available I.P. addresses.")
-        self.enclosure.deactivate_mouth_events()
+        # Build a list of interfaces and addresses
+        addr = {}
         for ifaceName in interfaces():
             addresses = [
                 i['addr'] for i in
@@ -52,22 +41,38 @@ class IPSkill(MycroftSkill):
                     AF_INET, [{'addr': None}])]
             if None in addresses:
                 addresses.remove(None)
+            # ignore "lo" (the local loopback)
             if addresses and ifaceName != "lo":
-                updated_addresses = [re.sub(r"\.", r" dot ", address)
-                                     for address in addresses]
-                logger.debug(addresses[0])
-                self.speak('%s: %s' % (
-                    "interface: " + ifaceName +
-                    ", I.P. Address ", ', '.join(updated_addresses)))
-                for address in addresses:
-                    self.enclosure.mouth_text(address)
-                    time.sleep((self.LETTERS_PER_SCREEN + len(address)) *
-                               self.SEC_PER_LETTER)
-        self.enclosure.activate_mouth_events()
-        self.speak("Those are all my I.P. addresses.")
+                addr[ifaceName] = addresses[0]
 
-    def stop(self):
-        pass
+        dot = self.dialog_renderer.render("dot")
+
+        if len(addr) == 0:
+            self.speak_dialog("no network connection")
+            return
+        elif len(addr) == 1:
+            self.enclosure.deactivate_mouth_events()
+            iface, ip = addr.popitem()
+            self.enclosure.mouth_text(ip)
+            ip_spoken = ip.replace(".", " "+dot+" ")
+            self.speak_dialog("my address is",
+                              {'ip': ip_spoken})
+            time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
+                           self.SEC_PER_LETTER)
+        else:
+            self.enclosure.deactivate_mouth_events()
+            for iface in addr:
+                ip = addr[iface]
+                self.enclosure.mouth_text(ip)
+                ip_spoken = ip.replace(".", " "+dot+" ")
+                self.speak_dialog("my address on X is Y",
+                                 {'interface': iface, 'ip': ip_spoken})
+                time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
+                               self.SEC_PER_LETTER)
+
+        mycroft.audio.wait_while_speaking()
+        self.enclosure.activate_mouth_events()
+        self.enclosure.mouth_reset()
 
 
 def create_skill():
