@@ -1,7 +1,8 @@
 {
-  "utterance": "ip address",
+  "utterance": "what's the network address",
   "intent_type": "IPIntent",
   "intent": {
-    "IPCommand": "IP Address"
-  }
+    "IP": "network address"
+  },
+  "expected_response": ".*[0-9]+ dot [0-9]+ dot [0-9]+ dot [0-9]+.*"
 }
