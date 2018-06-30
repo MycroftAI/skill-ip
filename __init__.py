@@ -53,10 +53,11 @@ class IPSkill(MycroftSkill):
         elif len(addr) == 1:
             self.enclosure.deactivate_mouth_events()
             iface, ip = addr.popitem()
-            self.enclosure.mouth_text(ip)
+            
             ip_spoken = ip.replace(".", " "+dot+" ")
             self.speak_dialog("my address is",
                               {'ip': ip_spoken})
+            self.enclosure.mouth_text(ip)
             time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
                            self.SEC_PER_LETTER)
         else:
