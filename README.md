@@ -1,4 +1,4 @@
-# <img src='https://rawgithub.com/FortAwesome/Font-Awesome/master/advanced-options/raw-svg/solid/info-circle.svg ' card_color='#22a7f0' width='50' height='50' style='vertical-align:bottom'/> 
+# <img src='https://rawgithub.com/FortAwesome/Font-Awesome/master/advanced-options/raw-svg/solid/info-circle.svg' card_color='#22a7f0' width='50' height='50' style='vertical-align:bottom'/> 
 Device IP Address
 
 ## About 
