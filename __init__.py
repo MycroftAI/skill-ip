@@ -14,12 +14,33 @@
 #
 import time
 from os.path import dirname, join
-from netifaces import interfaces, ifaddresses, AF_INET
+from ifaddr import get_adapters, IP
 
 from adapt.intent import IntentBuilder
 from mycroft.skills.core import MycroftSkill, intent_handler
 import mycroft.audio
 from mycroft.util.log import LOG
+
+
+def get_ifaces(ignore_list=None):
+    """ Build a dict with device names and their associated ip address.
+
+    Arguments:
+        ignore_list(list): list of devices to ignore. Defaults to "lo"
+
+    Returns:
+        (dict) with device names as keys and ip addresses as value.
+    """
+    ignore_list = ignore_list or ['lo']
+    res = {}
+    for iface in get_adapters():
+        # ignore "lo" (the local loopback)
+        if iface.ips and iface.name not in ignore_list:
+            for addr in iface.ips:
+                if addr.is_IPv4:
+                    res[iface.nice_name] = addr.ip
+                    break
+    return res
 
 
 class IPSkill(MycroftSkill):
@@ -31,20 +52,7 @@ class IPSkill(MycroftSkill):
 
     @intent_handler(IntentBuilder("IPIntent").require("query").require("IP"))
     def handle_query_IP(self, message):
-
-        # Build a list of interfaces and addresses
-        addr = {}
-        for ifaceName in interfaces():
-            addresses = [
-                i['addr'] for i in
-                ifaddresses(ifaceName).setdefault(
-                    AF_INET, [{'addr': None}])]
-            if None in addresses:
-                addresses.remove(None)
-            # ignore "lo" (the local loopback)
-            if addresses and ifaceName != "lo":
-                addr[ifaceName] = addresses[0]
-
+        addr = get_ifaces()
         dot = self.dialog_renderer.render("dot")
 
         if len(addr) == 0:
@@ -64,7 +72,7 @@ class IPSkill(MycroftSkill):
             for iface in addr:
                 ip = addr[iface]
                 self.enclosure.mouth_text(ip)
-                ip_spoken = ip.replace(".", " "+dot+" ")
+                ip_spoken = ip.replace(".", " " + dot + " ")
                 self.speak_dialog("my address on X is Y",
                                  {'interface': iface, 'ip': ip_spoken})
                 time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
