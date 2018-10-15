@@ -82,6 +82,28 @@ class IPSkill(MycroftSkill):
         self.enclosure.activate_mouth_events()
         self.enclosure.mouth_reset()
 
+    @intent_handler(IntentBuilder("").require("query").require("IP")
+            .require("last").require("digits"))
+    def handle_query_last_part_IP(self, message):
+        addr = get_ifaces()
+        if len(addr) == 0:
+            self.speak_dialog("no network connection")
+            return
+
+        self.enclosure.deactivate_mouth_events()
+        if "wlan0" in addr:
+            ip_end = addr['wlan0'].split(".")[-1]
+            self.speak_dialog("last digits", data={"digits": ip_end})
+        elif "eth0" in addr:
+            ip_end = addr['eth0'].split(".")[-1]
+            self.speak_dialog("last digits", data={"digits": ip_end})
+        self.enclosure.mouth_text(ip_end)
+        time.sleep(3) # Show for at least 3 seconds
+
+        mycroft.audio.wait_while_speaking()
+        self.enclosure.activate_mouth_events()
+        self.enclosure.mouth_reset()
+
 
 def create_skill():
     return IPSkill()
