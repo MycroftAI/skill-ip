@@ -92,17 +92,36 @@ class IPSkill(MycroftSkill):
 
         self.enclosure.deactivate_mouth_events()
         if "wlan0" in addr:
-            ip_end = addr['wlan0'].split(".")[-1]
-            self.speak_dialog("last digits", data={"digits": ip_end})
+            # Wifi is probably the one we're looking for
+            self.speak_last_digits(addr['wlan0'])
         elif "eth0" in addr:
-            ip_end = addr['eth0'].split(".")[-1]
-            self.speak_dialog("last digits", data={"digits": ip_end})
-        self.enclosure.mouth_text(ip_end)
-        time.sleep(3) # Show for at least 3 seconds
+            # If there's no wifi report the eth0
+            self.speak_last_digits(addr['eth0'])
+        elif len(addr) == 1:
+            # If none of the above matches and there's only one device
+            self.speak_last_digits(list(addr.values())[0])
+        else:
+            # Ok now I don't know, I'll just report them all
+            self.speak_multiple_last_digits(addr)
 
-        mycroft.audio.wait_while_speaking()
         self.enclosure.activate_mouth_events()
         self.enclosure.mouth_reset()
+
+    def speak_last_digits(self, ip):
+        ip_end = ip.split(".")[-1]
+        self.enclosure.mouth_text(ip_end)
+        self.speak_dialog("last digits", data={"digits": ip_end})
+        time.sleep(3) # Show for at least 3 seconds
+        mycroft.audio.wait_while_speaking()
+
+    def speak_multiple_last_digits(self, addr):
+        for key in addr:
+            ip_end = addr[key].split(".")[-1]
+            self.speak_dialog("last digits device",
+                              data={'device': key, 'digits': ip_end})
+            self.enclosure.mouth_text(ip_end)
+            time.sleep(3) # Show for at least 3 seconds
+            mycroft.audio.wait_while_speaking()
 
 
 def create_skill():
