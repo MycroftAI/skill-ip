@@ -1,5 +1,5 @@
 # Copyright 2017 Mycroft AI Inc.
-#
+# 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,9 +17,10 @@ from os.path import dirname, join
 from ifaddr import get_adapters, IP
 
 from adapt.intent import IntentBuilder
-from mycroft.skills.core import MycroftSkill, intent_handler
+from mycroft.skills.core import MycroftSkill, intent_handler, intent_file_handler
 import mycroft.audio
 from mycroft.util.log import LOG
+from subprocess import check_output
 
 
 def get_ifaces(ignore_list=None):
@@ -81,6 +82,24 @@ class IPSkill(MycroftSkill):
         mycroft.audio.wait_while_speaking()
         self.enclosure.activate_mouth_events()
         self.enclosure.mouth_reset()
+
+    @intent_file_handler("what.ssid.intent")
+    def handle_SSID_query(self, message):
+        addr = get_ifaces()
+        if len(addr) == 0:
+            self.speak_dialog("no network connection")
+            return
+
+        scanoutput = check_output(["iwlist", "wlan0", "scan"])
+        ssid = None
+        for line in scanoutput.split():
+            line = line.decode("utf-8")
+            if line[:5]  == "ESSID":
+                ssid = line.split('"')[1]
+        if ssid:
+            self.speak(ssid)
+        else:
+            self.speak_dialog("ethernet.connection")
 
     @intent_handler(IntentBuilder("").require("query").require("IP")
             .require("last").require("digits"))
