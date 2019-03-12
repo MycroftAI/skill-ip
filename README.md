@@ -9,6 +9,7 @@ Retrieve the [IP address](https://en.wikipedia.org/wiki/IP_address), also known 
 * "What's your IP address?"
 * "Tell me your IP address"
 * "Tell me your network address"
+* "What network are you connected to?"
 
 ## Credits 
 Mycroft AI (@MycroftAI)
