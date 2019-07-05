@@ -1,5 +1,5 @@
 # Copyright 2017 Mycroft AI Inc.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -13,14 +13,13 @@
 # limitations under the License.
 #
 import time
-from os.path import dirname, join
-from ifaddr import get_adapters, IP
+import os
+from ifaddr import get_adapters
 
 from adapt.intent import IntentBuilder
-from mycroft.skills.core import MycroftSkill, intent_handler, intent_file_handler
+from mycroft.skills.core import MycroftSkill, intent_handler
 import mycroft.audio
-from mycroft.util.log import LOG
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError
 
 
 def get_ifaces(ignore_list=None):
@@ -44,12 +43,35 @@ def get_ifaces(ignore_list=None):
     return res
 
 
+def which(program):
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return False
+
+
 class IPSkill(MycroftSkill):
     SEC_PER_LETTER = 0.65  # timing based on Mark 1 screen
     LETTERS_PER_SCREEN = 9.0
 
     def __init__(self):
         super(IPSkill, self).__init__(name="IPSkill")
+
+    def initialize(self):
+        # Only register the SSID intent if iwlist is installed on the system
+        if which("iwlist"):
+            self.register_intent_file("what.ssid.intent",
+                                      self.handle_SSID_query)
 
     @intent_handler(IntentBuilder("IPIntent").require("query").require("IP"))
     def handle_query_IP(self, message):
@@ -67,7 +89,7 @@ class IPSkill(MycroftSkill):
             self.speak_dialog("my address is",
                               {'ip': ip_spoken})
             time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
-                           self.SEC_PER_LETTER)
+                       self.SEC_PER_LETTER)
         else:
             self.enclosure.deactivate_mouth_events()
             for iface in addr:
@@ -75,34 +97,36 @@ class IPSkill(MycroftSkill):
                 self.enclosure.mouth_text(ip)
                 ip_spoken = ip.replace(".", " " + dot + " ")
                 self.speak_dialog("my address on X is Y",
-                                 {'interface': iface, 'ip': ip_spoken})
+                                  {'interface': iface, 'ip': ip_spoken})
                 time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
-                               self.SEC_PER_LETTER)
+                           self.SEC_PER_LETTER)
 
         mycroft.audio.wait_while_speaking()
         self.enclosure.activate_mouth_events()
         self.enclosure.mouth_reset()
 
-    @intent_file_handler("what.ssid.intent")
     def handle_SSID_query(self, message):
         addr = get_ifaces()
         if len(addr) == 0:
             self.speak_dialog("no network connection")
             return
 
-        scanoutput = check_output(["iwlist", "wlan0", "scan"])
-        ssid = None
-        for line in scanoutput.split():
-            line = line.decode("utf-8")
-            if line[:5]  == "ESSID":
-                ssid = line.split('"')[1]
-        if ssid:
-            self.speak(ssid)
-        else:
-            self.speak_dialog("ethernet.connection")
+        try:
+            scanoutput = check_output(["iwlist", "wlan0", "scan"])
+            for line in scanoutput.split():
+                line = line.decode("utf-8")
+                if line[:5] == "ESSID":
+                    ssid = line.split('"')[1]
+        except CalledProcessError:
+            ssid = None
+        finally:
+            if ssid:
+                self.speak(ssid)
+            else:
+                self.speak_dialog("ethernet.connection")
 
     @intent_handler(IntentBuilder("").require("query").require("IP")
-            .require("last").require("digits"))
+                                     .require("last").require("digits"))
     def handle_query_last_part_IP(self, message):
         addr = get_ifaces()
         if len(addr) == 0:
@@ -130,7 +154,7 @@ class IPSkill(MycroftSkill):
         ip_end = ip.split(".")[-1]
         self.enclosure.mouth_text(ip_end)
         self.speak_dialog("last digits", data={"digits": ip_end})
-        time.sleep(3) # Show for at least 3 seconds
+        time.sleep(3)  # Show for at least 3 seconds
         mycroft.audio.wait_while_speaking()
 
     def speak_multiple_last_digits(self, addr):
@@ -139,7 +163,7 @@ class IPSkill(MycroftSkill):
             self.speak_dialog("last digits device",
                               data={'device': key, 'digits': ip_end})
             self.enclosure.mouth_text(ip_end)
-            time.sleep(3) # Show for at least 3 seconds
+            time.sleep(3)  # Show for at least 3 seconds
             mycroft.audio.wait_while_speaking()
 
 
