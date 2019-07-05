@@ -107,18 +107,21 @@ class IPSkill(MycroftSkill):
 
     def handle_SSID_query(self, message):
         addr = get_ifaces()
+        ssid = None
         if len(addr) == 0:
             self.speak_dialog("no network connection")
             return
 
         try:
             scanoutput = check_output(["iwlist", "wlan0", "scan"])
+
             for line in scanoutput.split():
                 line = line.decode("utf-8")
                 if line[:5] == "ESSID":
                     ssid = line.split('"')[1]
         except CalledProcessError:
-            ssid = None
+            # Computer has no wlan0
+            pass
         finally:
             if ssid:
                 self.speak(ssid)
