@@ -2,7 +2,7 @@
   "utterance": "what's your ip address",
   "intent_type": "IPIntent",
   "intent": {
-    "IP": "IP address"
+    "IP": "ip address"
   },
   "expected_response": ".*[0-9]+ dot [0-9]+ dot [0-9]+ dot [0-9]+.*"
 }
