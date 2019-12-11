@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
 import time
-from subprocess import check_output, CalledProcessError
-
-from adapt.intent import IntentBuilder
+import os
 from ifaddr import get_adapters
 
-import mycroft.audio
+from adapt.intent import IntentBuilder
 from mycroft.skills.core import MycroftSkill, intent_handler
+import mycroft.audio
+from subprocess import check_output, CalledProcessError
 
 
 def get_ifaces(ignore_list=None):
@@ -71,13 +70,11 @@ class IPSkill(MycroftSkill):
     def initialize(self):
         # Only register the SSID intent if iwlist is installed on the system
         if which("iwlist"):
-            self.register_intent_file(
-                "what.ssid.intent",
-                self.handle_ssid_query
-            )
+            self.register_intent_file("what.ssid.intent",
+                                      self.handle_SSID_query)
 
     @intent_handler(IntentBuilder("IPIntent").require("query").require("IP"))
-    def handle_query_ip(self, _):
+    def handle_query_IP(self, message):
         addr = get_ifaces()
         dot = self.dialog_renderer.render("dot")
 
@@ -88,33 +85,27 @@ class IPSkill(MycroftSkill):
             self.enclosure.deactivate_mouth_events()
             iface, ip = addr.popitem()
             self.enclosure.mouth_text(ip)
-            ip_spoken = ip.replace(".", " " + dot + " ")
-            self.speak_dialog("my address is", dict(ip=ip_spoken))
-            self.gui.display_screen('ip', data=dict(ip_address=ip))
-            time.sleep(5)
-            self.enclosure.mouth_reset()
-            time.sleep(
-                (self.LETTERS_PER_SCREEN + len(ip)) * self.SEC_PER_LETTER
-            )
+            ip_spoken = ip.replace(".", " "+dot+" ")
+            self.speak_dialog("my address is",
+                              {'ip': ip_spoken})
+            time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
+                       self.SEC_PER_LETTER)
         else:
             self.enclosure.deactivate_mouth_events()
             for iface in addr:
                 ip = addr[iface]
                 self.enclosure.mouth_text(ip)
                 ip_spoken = ip.replace(".", " " + dot + " ")
-                self.speak_dialog(
-                    "my address on X is Y",
-                    dict(interface=iface, ip=ip_spoken)
-                )
-                time.sleep(
-                    (self.LETTERS_PER_SCREEN + len(ip)) * self.SEC_PER_LETTER
-                )
+                self.speak_dialog("my address on X is Y",
+                                  {'interface': iface, 'ip': ip_spoken})
+                time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
+                           self.SEC_PER_LETTER)
 
         mycroft.audio.wait_while_speaking()
         self.enclosure.activate_mouth_events()
         self.enclosure.mouth_reset()
 
-    def handle_ssid_query(self, _):
+    def handle_SSID_query(self, message):
         addr = get_ifaces()
         ssid = None
         if len(addr) == 0:
@@ -123,6 +114,7 @@ class IPSkill(MycroftSkill):
 
         try:
             scanoutput = check_output(["iwlist", "wlan0", "scan"])
+
             for line in scanoutput.split():
                 line = line.decode("utf-8")
                 if line[:5] == "ESSID":
@@ -138,7 +130,7 @@ class IPSkill(MycroftSkill):
 
     @intent_handler(IntentBuilder("").require("query").require("IP")
                                      .require("last").require("digits"))
-    def handle_query_last_part_ip(self, _):
+    def handle_query_last_part_IP(self, message):
         addr = get_ifaces()
         if len(addr) == 0:
             self.speak_dialog("no network connection")
