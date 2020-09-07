@@ -85,6 +85,7 @@ class IPSkill(MycroftSkill):
             self.enclosure.deactivate_mouth_events()
             iface, ip = addr.popitem()
             self.enclosure.mouth_text(ip)
+            self.gui_show(ip)
             ip_spoken = ip.replace(".", " "+dot+" ")
             self.speak_dialog("my address is",
                               {'ip': ip_spoken})
@@ -95,6 +96,7 @@ class IPSkill(MycroftSkill):
             for iface in addr:
                 ip = addr[iface]
                 self.enclosure.mouth_text(ip)
+                self.gui_show(ip)
                 ip_spoken = ip.replace(".", " " + dot + " ")
                 self.speak_dialog("my address on X is Y",
                                   {'interface': iface, 'ip': ip_spoken})
@@ -131,6 +133,7 @@ class IPSkill(MycroftSkill):
     @intent_handler(IntentBuilder("").require("query").require("IP")
                                      .require("last").require("digits"))
     def handle_query_last_part_IP(self, message):
+        ip = None
         addr = get_ifaces()
         if len(addr) == 0:
             self.speak_dialog("no network connection")
@@ -139,19 +142,27 @@ class IPSkill(MycroftSkill):
         self.enclosure.deactivate_mouth_events()
         if "wlan0" in addr:
             # Wifi is probably the one we're looking for
-            self.speak_last_digits(addr['wlan0'])
+            ip = addr['wlan0']
         elif "eth0" in addr:
             # If there's no wifi report the eth0
-            self.speak_last_digits(addr['eth0'])
+            ip = addr['eth0']
         elif len(addr) == 1:
             # If none of the above matches and there's only one device
-            self.speak_last_digits(list(addr.values())[0])
+            ip = list(addr.values())[0]
+
+        if ip:
+            self.gui_show(ip)
+            self.speak_last_digits(ip)
         else:
             # Ok now I don't know, I'll just report them all
             self.speak_multiple_last_digits(addr)
 
         self.enclosure.activate_mouth_events()
         self.enclosure.mouth_reset()
+
+    def gui_show(self, ip):
+        self.gui['ip'] = ip
+        self.gui.show_page("ip-address.qml")
 
     def speak_last_digits(self, ip):
         ip_end = ip.split(".")[-1]
@@ -165,6 +176,7 @@ class IPSkill(MycroftSkill):
             ip_end = addr[key].split(".")[-1]
             self.speak_dialog("last digits device",
                               data={'device': key, 'digits': ip_end})
+            self.gui_show(addr)
             self.enclosure.mouth_text(ip_end)
             time.sleep(3)  # Show for at least 3 seconds
             mycroft.audio.wait_while_speaking()
