@@ -17,38 +17,16 @@
 
 import QtQuick.Layouts 1.4
 import QtQuick 2.4
-import QtQuick.Controls 2.0
-import org.kde.kirigami 2.4 as Kirigami
 
 import Mycroft 1.0 as Mycroft
 
-Mycroft.Delegate {
+Mycroft.ProportionalDelegate {
     id: root
-    property var ip: sessionData.ip
-    Rectangle {
-        color: "#22a7f0"
-        width: parent.width
-        height: parent.height
-        ColumnLayout {
-            anchors.fill: parent
-        
-            Text {
-                id: instruction
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignLeft
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-                elide: Text.ElideRight
-                font.family: "Noto Sans"
-                font.bold: true
-                font.weight: Font.Bold
-                fontSizeMode: Text.HorizontalFit
-                minimumPixelSize: 65
-                font.pixelSize: 80
-                visible: !content.visible
-                color: "white"
-                text: root.ip
-            }
-        }
+    Mycroft.AutoFitLabel {
+        id: ipAddress
+        font.weight: Font.Bold
+        Layout.fillWidth: true
+        Layout.margins: 10
+        text: sessionData.ip
     }
 }
