@@ -1,3 +1,3 @@
-Mój adres I.P. ma końcówkę {{ digits }}
+Mój adres ajpi ma końcówkę {{ digits }}
 Mój adres ma końcówkę {{ digits }}
 Końcówka to {{ digits }}
