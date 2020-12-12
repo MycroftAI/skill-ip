@@ -1,0 +1,5 @@
+En {{ device }}, la meva i.p. acaba en {{ digits }}
+En {{ device }}, la meva adreça i.p. acaba en {{ digits }}
+En {{ device }}, la i.p acaba en {{ digits }}
+En {{ device }}, la adreça i.p. acaba en {{ digits }}
+En {{ device }} acaba en {{ digits }}
