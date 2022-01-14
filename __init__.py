@@ -73,9 +73,6 @@ def which(program):
 
 
 class IPSkill(MycroftSkill):
-    SEC_PER_LETTER = 0.65  # timing based on Mark 1 screen
-    LETTERS_PER_SCREEN = 9.0
-
     def __init__(self):
         super(IPSkill, self).__init__(name="IPSkill")
 
@@ -86,7 +83,7 @@ class IPSkill(MycroftSkill):
                                       self.handle_SSID_query)
 
     @intent_handler(IntentBuilder("IPIntent").require("query").require("IP"))
-    def handle_query_IP(self, message):
+    def handle_query_IP(self, _):
         addr = get_ifaces()
         dot = self.dialog_renderer.render("dot")
 
@@ -100,9 +97,8 @@ class IPSkill(MycroftSkill):
             self.gui_show(ip)
             ip_spoken = ip.replace(".", " "+dot+" ")
             self.speak_dialog("my address is",
-                              {'ip': ip_spoken})
-            time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
-                       self.SEC_PER_LETTER)
+                              {'ip': ip_spoken},
+                              wait=True)
         else:
             self.enclosure.deactivate_mouth_events()
             for iface in addr:
@@ -111,15 +107,15 @@ class IPSkill(MycroftSkill):
                 self.gui_show(ip)
                 ip_spoken = ip.replace(".", " " + dot + " ")
                 self.speak_dialog("my address on X is Y",
-                                  {'interface': speakable_name(iface), 'ip': ip_spoken})
-                time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
-                           self.SEC_PER_LETTER)
+                                  {'interface': speakable_name(iface), 'ip': ip_spoken},
+                                  wait=True)
 
-        mycroft.audio.wait_while_speaking()
+        if self.gui.connected:
+            self.gui.clear()
         self.enclosure.activate_mouth_events()
         self.enclosure.mouth_reset()
 
-    def handle_SSID_query(self, message):
+    def handle_SSID_query(self, _):
         addr = get_ifaces()
         ssid = None
         if len(addr) == 0:
@@ -144,7 +140,7 @@ class IPSkill(MycroftSkill):
 
     @intent_handler(IntentBuilder("").require("query").require("IP")
                                      .require("last").require("digits"))
-    def handle_query_last_part_IP(self, message):
+    def handle_query_last_part_IP(self, _):
         ip = None
         addr = get_ifaces()
         if len(addr) == 0:
@@ -164,17 +160,18 @@ class IPSkill(MycroftSkill):
 
         if ip:
             self.gui_show(ip)
-            self.speak_last_digits(ip)
+            self.speak_last_digits(ip, wait=True)
         else:
             # Ok now I don't know, I'll just report them all
             self.speak_multiple_last_digits(addr)
 
+        self.gui.clear()
         self.enclosure.activate_mouth_events()
         self.enclosure.mouth_reset()
 
     def gui_show(self, ip):
         self.gui['ip'] = ip
-        self.gui.show_page("ip-address.qml")
+        self.gui.replace_page("ip-address.qml", override_idle=True)
 
     def speak_last_digits(self, ip):
         ip_end = ip.split(".")[-1]
