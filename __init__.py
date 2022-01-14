@@ -14,6 +14,7 @@
 #
 import time
 import os
+import re
 from ifaddr import get_adapters
 
 from adapt.intent import IntentBuilder
@@ -21,6 +22,17 @@ from mycroft.skills.core import MycroftSkill, intent_handler
 import mycroft.audio
 from subprocess import check_output, CalledProcessError
 
+def speakable_name(iface_name: str):
+    match = re.match(r'^(wlan|eth)([0-9]+)$', iface_name)
+    if match:
+        iface_type, iface_num = match.group(1), match.group(2)
+        if iface_type == "wlan":
+            # wireless 0
+            return f"wireless {iface_num}"
+
+        return f"wired {iface_num}"
+
+    return iface_name
 
 def get_ifaces(ignore_list=None):
     """ Build a dict with device names and their associated ip address.
@@ -31,7 +43,7 @@ def get_ifaces(ignore_list=None):
     Returns:
         (dict) with device names as keys and ip addresses as value.
     """
-    ignore_list = ignore_list or ['lo']
+    ignore_list = ignore_list or ['lo', 'lxcbr0']
     res = {}
     for iface in get_adapters():
         # ignore "lo" (the local loopback)
@@ -99,7 +111,7 @@ class IPSkill(MycroftSkill):
                 self.gui_show(ip)
                 ip_spoken = ip.replace(".", " " + dot + " ")
                 self.speak_dialog("my address on X is Y",
-                                  {'interface': iface, 'ip': ip_spoken})
+                                  {'interface': speakable_name(iface), 'ip': ip_spoken})
                 time.sleep((self.LETTERS_PER_SCREEN + len(ip)) *
                            self.SEC_PER_LETTER)
 
