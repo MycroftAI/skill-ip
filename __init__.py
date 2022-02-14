@@ -112,32 +112,34 @@ class IPSkill(MycroftSkill):
                                     wait=True)
 
             if self.gui.connected:
-                self.gui.clear()
+                self.gui.release()
+
             self.enclosure.activate_mouth_events()
             self.enclosure.mouth_reset()
 
     def handle_SSID_query(self, _):
-        addr = get_ifaces()
-        ssid = None
-        if len(addr) == 0:
-            self.speak_dialog("no network connection")
-            return
+        with self.activity():
+            addr = get_ifaces()
+            ssid = None
+            if len(addr) == 0:
+                self.speak_dialog("no network connection")
+                return
 
-        try:
-            scanoutput = check_output(["iwlist", "wlan0", "scan"])
+            try:
+                scanoutput = check_output(["iwlist", "wlan0", "scan"])
 
-            for line in scanoutput.split():
-                line = line.decode("utf-8")
-                if line[:5] == "ESSID":
-                    ssid = line.split('"')[1]
-        except CalledProcessError:
-            # Computer has no wlan0
-            pass
-        finally:
-            if ssid:
-                self.speak(ssid)
-            else:
-                self.speak_dialog("ethernet.connection")
+                for line in scanoutput.split():
+                    line = line.decode("utf-8")
+                    if line[:5] == "ESSID":
+                        ssid = line.split('"')[1]
+            except CalledProcessError:
+                # Computer has no wlan0
+                pass
+            finally:
+                if ssid:
+                    self.speak(ssid, wait=True)
+                else:
+                    self.speak_dialog("ethernet.connection", wait=True)
 
     @intent_handler(IntentBuilder("").require("query").require("IP")
                                      .require("last").require("digits"))
@@ -146,7 +148,7 @@ class IPSkill(MycroftSkill):
             ip = None
             addr = get_ifaces()
             if len(addr) == 0:
-                self.speak_dialog("no network connection")
+                self.speak_dialog("no network connection", wait=True)
                 return
 
             self.enclosure.deactivate_mouth_events()
@@ -167,7 +169,7 @@ class IPSkill(MycroftSkill):
                 # Ok now I don't know, I'll just report them all
                 self.speak_multiple_last_digits(addr)
 
-            self.gui.clear()
+            self.gui.release()
             self.enclosure.activate_mouth_events()
             self.enclosure.mouth_reset()
 
