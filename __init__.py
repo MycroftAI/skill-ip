@@ -22,8 +22,9 @@ from mycroft.skills.core import MycroftSkill, intent_handler
 import mycroft.audio
 from subprocess import check_output, CalledProcessError
 
+
 def speakable_name(iface_name: str):
-    match = re.match(r'^(wlan|eth)([0-9]+)$', iface_name)
+    match = re.match(r"^(wlan|eth)([0-9]+)$", iface_name)
     if match:
         iface_type, iface_num = match.group(1), match.group(2)
         if iface_type == "wlan":
@@ -34,6 +35,7 @@ def speakable_name(iface_name: str):
 
     return iface_name
 
+
 def get_ifaces(ignore_list=None):
     """ Build a dict with device names and their associated ip address.
 
@@ -43,7 +45,7 @@ def get_ifaces(ignore_list=None):
     Returns:
         (dict) with device names as keys and ip addresses as value.
     """
-    ignore_list = ignore_list or ['lo', 'lxcbr0']
+    ignore_list = ignore_list or ["lo", "lxcbr0"]
     res = {}
     for iface in get_adapters():
         # ignore "lo" (the local loopback)
@@ -79,8 +81,10 @@ class IPSkill(MycroftSkill):
     def initialize(self):
         # Only register the SSID intent if iwlist is installed on the system
         if which("iwlist"):
-            self.register_intent_file("what.ssid.intent",
-                                      self.handle_SSID_query)
+            self.register_intent_file("what.ssid.intent", self.handle_SSID_query)
+
+        self._tts_cache_key = f"{self.skill_id}.single-ip"
+        self._cache_single_ip()
 
     @intent_handler(IntentBuilder("IPIntent").require("query").require("IP"))
     def handle_query_IP(self, _):
@@ -96,10 +100,14 @@ class IPSkill(MycroftSkill):
                 iface, ip = addr.popitem()
                 self.enclosure.mouth_text(ip)
                 self.gui_show(ip)
-                ip_spoken = ip.replace(".", " "+dot+" ")
-                self.speak_dialog("my address is",
-                                {'ip': ip_spoken},
-                                wait=True)
+                ip_spoken = ip.replace(".", " " + dot + " ")
+                self.speak_dialog(
+                    "my address is",
+                    {"ip": ip_spoken},
+                    cache_key=self._tts_cache_key,
+                    wait=True,
+                )
+                self._cache_single_ip()
             else:
                 self.enclosure.deactivate_mouth_events()
                 for iface in addr:
@@ -107,9 +115,11 @@ class IPSkill(MycroftSkill):
                     self.enclosure.mouth_text(ip)
                     self.gui_show(ip)
                     ip_spoken = ip.replace(".", " " + dot + " ")
-                    self.speak_dialog("my address on X is Y",
-                                    {'interface': speakable_name(iface), 'ip': ip_spoken},
-                                    wait=True)
+                    self.speak_dialog(
+                        "my address on X is Y",
+                        {"interface": speakable_name(iface), "ip": ip_spoken},
+                        wait=True,
+                    )
 
             if self.gui.connected:
                 self.gui.release()
@@ -141,8 +151,13 @@ class IPSkill(MycroftSkill):
                 else:
                     self.speak_dialog("ethernet.connection", wait=True)
 
-    @intent_handler(IntentBuilder("").require("query").require("IP")
-                                     .require("last").require("digits"))
+    @intent_handler(
+        IntentBuilder("")
+        .require("query")
+        .require("IP")
+        .require("last")
+        .require("digits")
+    )
     def handle_query_last_part_IP(self, _):
         with self.activity():
             ip = None
@@ -154,10 +169,10 @@ class IPSkill(MycroftSkill):
             self.enclosure.deactivate_mouth_events()
             if "wlan0" in addr:
                 # Wifi is probably the one we're looking for
-                ip = addr['wlan0']
+                ip = addr["wlan0"]
             elif "eth0" in addr:
                 # If there's no wifi report the eth0
-                ip = addr['eth0']
+                ip = addr["eth0"]
             elif len(addr) == 1:
                 # If none of the above matches and there's only one device
                 ip = list(addr.values())[0]
@@ -174,7 +189,7 @@ class IPSkill(MycroftSkill):
             self.enclosure.mouth_reset()
 
     def gui_show(self, ip):
-        self.gui['ip'] = ip
+        self.gui["ip"] = ip
         self.gui.replace_page("ip-address.qml", override_idle=True)
 
     def speak_last_digits(self, ip):
@@ -187,12 +202,25 @@ class IPSkill(MycroftSkill):
     def speak_multiple_last_digits(self, addr):
         for key in addr:
             ip_end = addr[key].split(".")[-1]
-            self.speak_dialog("last digits device",
-                              data={'device': key, 'digits': ip_end})
+            self.speak_dialog(
+                "last digits device", data={"device": key, "digits": ip_end}
+            )
             self.gui_show(addr)
             self.enclosure.mouth_text(ip_end)
             time.sleep(3)  # Show for at least 3 seconds
             mycroft.audio.wait_while_speaking()
+
+    def _cache_single_ip(self):
+        addr = get_ifaces()
+        if len(addr) != 1:
+            return
+
+        dot = self.dialog_renderer.render("dot")
+        iface, ip = addr.popitem()
+        ip_spoken = ip.replace(".", " " + dot + " ")
+        self.cache_dialog(
+            "my address is", {"ip": ip_spoken}, cache_key=self._tts_cache_key
+        )
 
 
 def create_skill():
