@@ -84,7 +84,7 @@ class IPSkill(MycroftSkill):
             self.register_intent_file("what.ssid.intent", self.handle_SSID_query)
 
         self._tts_cache_key = f"{self.skill_id}.single-ip"
-        self._cache_single_ip()
+        self.add_event("mycroft.started", self._cache_single_ip)
 
     @intent_handler(IntentBuilder("IPIntent").require("query").require("IP"))
     def handle_query_IP(self, _):
@@ -210,7 +210,7 @@ class IPSkill(MycroftSkill):
             time.sleep(3)  # Show for at least 3 seconds
             mycroft.audio.wait_while_speaking()
 
-    def _cache_single_ip(self):
+    def _cache_single_ip(self, _message=None):
         addr = get_ifaces()
         if len(addr) != 1:
             return
