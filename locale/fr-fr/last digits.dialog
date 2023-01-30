@@ -1,0 +1,5 @@
+mon I.P. se termine par {{ digits }} 
+mon adresse IP se termine par {{ digits }} 
+mon I.P. se fini par {{ digits }} 
+mon adresse IP se fini par {{ digits }} 
+elle se termine par {{ digits }}
